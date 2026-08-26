@@ -109,8 +109,17 @@ brain:
     # Auth comes from ANTHROPIC_API_KEY or an `ant auth login` profile.
 
   scripted:
-    # Used when backend is `scripted`. Empty means use the built-in pool.
-    lines: []
+    # Used when backend is `scripted`. Leave empty and the built-in pool is
+    # used instead -- those defaults are generic and will NOT be inside your
+    # lexicon, which anima.probe will catch and report as leaks. Once a
+    # lexicon is chosen, write these.
+    lines:
+      - "I do not know. I have not, for a long time."
+      - "Ask me another."
+      - "I forget. I forget all but the cold."
+      - "Say that again."
+      - "I have no answer for that."
+      - "Go or do not go. Most go."
     # Exact-word triggers, checked before the line pool. Handy for the two or
     # three questions every single visitor asks.
     keyed:
