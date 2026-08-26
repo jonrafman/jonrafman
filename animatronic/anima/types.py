@@ -22,11 +22,11 @@ class Turn:
 
 @dataclass
 class Utterance:
-    """Synthesized speech, ready to be played and lip-synced.
+    """Synthesized speech, ready to be played and rendered as light.
 
     ``samples`` is mono float32 in [-1, 1]. We keep raw samples rather than a
-    file path because the jaw needs the waveform to derive its motion envelope,
-    and re-reading a temp file per sentence is wasted latency.
+    file path because the light is driven from the waveform's amplitude
+    envelope, and re-reading a temp file per sentence is wasted latency.
     """
 
     samples: Sequence[float]
@@ -58,15 +58,16 @@ class Voice(Protocol):
     def synthesize(self, text: str) -> Utterance: ...
 
 
-class Jaw(Protocol):
-    """Plays an utterance and moves the mouth in time with it."""
+class Light(Protocol):
+    """The sculpture's only physical output.
 
-    def perform(self, utterance: Utterance) -> None: ...
+    ``set_level`` takes a *perceptual* level in [0, 1]; implementations apply
+    their own gamma correction on the way to the hardware.
+    """
+
+    def set_level(self, level: float) -> None: ...
 
     def rest(self) -> None: ...
-
-    def set_opening(self, amount: float) -> None:
-        """Set jaw position directly, 0.0 (closed) to 1.0 (fully open)."""
 
 
 class Ears(Protocol):

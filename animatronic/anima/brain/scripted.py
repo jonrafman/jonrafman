@@ -2,11 +2,11 @@
 
 Three jobs, all of them real:
 
-1. Develop the whole pipeline -- ears, voice, jaw, servos, timing -- without a
-   model, an API key, or a network. Most of the hard engineering in this project
-   has nothing to do with the language model.
-2. Be the fallback when the network is down mid-exhibition. A puppet that says
-   something evasive and in character beats a puppet that says nothing.
+1. Develop the whole pipeline -- ears, voice, light, timing -- without a model,
+   an API key, or a network. Much of the hard engineering in this project has
+   nothing to do with the language model.
+2. Be the fallback when the network is down mid-exhibition. A piece that says
+   something evasive and in character beats a piece that says nothing.
 3. Be a deterministic fixture for tests.
 """
 

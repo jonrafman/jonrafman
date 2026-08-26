@@ -22,7 +22,7 @@ log = logging.getLogger(__name__)
 class KeyboardTrigger:
     """Press enter. For development."""
 
-    def __init__(self, message: str = "\n[press enter to approach the figure]") -> None:
+    def __init__(self, message: str = "\n[press enter to approach the piece]") -> None:
         self.message = message
 
     def wait(self) -> None:
@@ -34,7 +34,7 @@ class KeyboardTrigger:
 
 
 class AlwaysTrigger:
-    """Never waits -- the figure is always listening.
+    """Never waits -- the piece is always listening.
 
     Only sensible with a close-talking microphone in a quiet space, or during
     testing. In a gallery this transcribes the room all day.
@@ -62,9 +62,9 @@ class ButtonTrigger:
 
 
 class MotionTrigger:
-    """A PIR sensor. Fires when someone enters the figure's space.
+    """A PIR sensor. Fires when someone enters the piece's space.
 
-    ``settle_seconds`` waits after motion before starting, so the figure does
+    ``settle_seconds`` waits after motion before starting, so the piece does
     not begin talking to a visitor's back as they walk past. ``cooldown``
     prevents one lingering person from re-triggering forever.
     """

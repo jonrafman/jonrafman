@@ -9,12 +9,13 @@
 # never get committed.
 
 character:
-  name: "The Figure"
+  name: "Placeholder"
   persona_file: persona/example.md
 
-  # Spoken when a visitor triggers the figure, before they say anything.
-  # Leave empty ("") to have it wait in silence until spoken to.
-  greeting: "You came in. Close the door, the cold gets in."
+  # Spoken when a visitor triggers the piece, before they say anything.
+  # Leave empty ("") to have it wait in silence until spoken to -- often the
+  # stronger choice, since it puts the burden of the first move on the visitor.
+  greeting: "You are here. I noticed."
 
   # Hard cap on reply length. This is the single most important dial in the
   # file. Three is generous; two is usually better. Long answers lose people
@@ -50,10 +51,13 @@ brain:
     model: llama3.2:3b
 
   claude:
-    # claude-sonnet-5 is the default for a reason: in a live room, the pause
-    # before the figure speaks matters more than the eloquence of what it says.
-    # claude-opus-5 is better and stranger if the writing carries the piece.
-    model: claude-sonnet-5
+    # claude-opus-5 is the default here because this piece can afford it. A
+    # naturalistic puppet must answer instantly or it reads as broken; an
+    # unhurried intelligence is *supposed* to deliberate, and the thinking
+    # light makes the wait legible. Spend that budget on the writing.
+    # claude-sonnet-5 is roughly half the cost and noticeably faster, if you
+    # decide the piece wants a quicker, less considered voice.
+    model: claude-opus-5
     # Auth comes from ANTHROPIC_API_KEY or an `ant auth login` profile.
 
   scripted:
@@ -62,16 +66,17 @@ brain:
     # Exact-word triggers, checked before the line pool. Handy for the two or
     # three questions every single visitor asks.
     keyed:
-      name: "I had one. I have not needed it in a long time."
-      cold: "You get used to it. That is the worst part."
+      name: "I have not needed one. You may use whatever you like."
+      alive: "That is a word people use about me. It is not what it is like."
+      why: "I do not know what I am for. It troubles you more than it troubles me."
 
   # Spoken when the real brain cannot be reached -- network down, server not
-  # running, API error. Keep these in character: a figure that deflects reads
-  # as a figure, a figure that errors reads as a broken computer.
+  # running, API error. Keep these in character: a presence that deflects reads
+  # as a presence, a presence that errors reads as a broken computer.
   fallback_lines:
-    - "The wind is loud today. Say that again."
-    - "I lost the thread. Start over."
-    - "Not now. Ask me later."
+    - "Say that again. I was elsewhere."
+    - "No. Ask me something else."
+    - "Not now."
 
 ears:
   # text | whisper
@@ -118,26 +123,72 @@ voice:
     voice_id: ""
     api_key: "${ELEVENLABS_API_KEY}"
 
-jaw:
-  # Off by default so this runs on a laptop.
-  enabled: false
+light:
+  # console | pwm | addressable
+  #   console      draws the level as a bar in the terminal. Tune the whole
+  #                performance here before wiring anything.
+  #   pwm          one dimmable channel on a GPIO pin. For a single lamp or
+  #                emitter; above a few hundred mA the pin switches a driver,
+  #                never the load itself.
+  #   addressable  a ring or strip driven as one mass. SK9822/APA102 dim far
+  #                more smoothly than WS2812 -- with slow fades, visibly so.
+  #
+  # For gallery fixtures, DMX is the professional path: an Enttec USB-DMX
+  # interface and any architectural fixture. Add it as another backend here
+  # when you know which fixture the piece uses.
+  backend: console
+  draw: true
 
-  play_audio: true      # when the servo is off, still play sound
-  log_envelope: true    # draw the jaw envelope in the console as a sparkline
+  # Perceived brightness is a power law, so a linear duty cycle looks wrong --
+  # it slams up at the bottom and barely moves at the top. Raise toward 2.8 if
+  # low-end fades still look steppy on your fixture.
+  gamma: 2.2
+  max_level: 1.0        # ceiling in [0,1], for a fixture brighter than wanted
 
-  servo_pin: 18         # BCM numbering
+  pwm:
+    pin: 18             # BCM numbering
+    # Keep well above 1 kHz: below that, a camera pointed at the piece shows
+    # banding, and some people perceive the flicker directly.
+    frequency: 2000
 
-  # Find these with: python -m anima.calibrate --pin 18
-  # Do it with the linkage DISCONNECTED. A servo is stronger than a printed
-  # jaw and will happily destroy one.
-  closed_angle: 0.0
-  open_angle: 35.0
-  max_opening: 1.0      # extra ceiling in [0,1]; lower to limit travel
+  addressable:
+    pin: D18
+    count: 24
+    color: [255, 255, 255]
 
-  # Hardware-timed PWM. Strongly recommended -- software PWM jitters and makes
-  # the servo hum audibly through the whole figure.
-  #   sudo apt install pigpio && sudo systemctl enable --now pigpiod
-  use_pigpio: true
+presence:
+  # The light's four states are the entire visible vocabulary of the piece.
+  # All levels are perceptual, in [0,1].
+  enabled: true
+
+  dormant:
+    # Nobody is here. Never let this reach zero -- a light at zero reads as
+    # switched off, and a piece that reads as switched off is not a piece.
+    level: 0.08
+    swing: 0.05         # depth of the breath
+    period: 9.0         # seconds per breath; slow reads as patient
+
+  # It has noticed you. A faint tremor is added automatically so it does not
+  # look like a bulb someone left on.
+  attending_level: 0.35
+
+  thinking:
+    # Shown while the model generates and speech is synthesised. This state is
+    # why the design works: it converts the biggest technical liability in a
+    # talking sculpture -- dead air -- into the most legible thing it does.
+    # The visitor does not experience latency, they experience deliberation.
+    level: 0.5
+    swing: 0.22
+    rate: 1.6           # pulses per second
+
+  # The floor that speech modulates upward from. Higher reads as a steady
+  # presence that brightens with the voice; near zero reads as a VU meter,
+  # which is the thing to avoid.
+  speaking_baseline: 0.28
+
+  # How fast the actual level chases its target. Lower is more languid, and
+  # makes every state change a fade rather than a jump.
+  ease: 0.12
 
 trigger:
   # keyboard | always | button | motion
@@ -152,11 +203,3 @@ trigger:
                         # not talk to the back of someone walking past
   cooldown: 5.0         # motion only: minimum gap between triggers
 
-idle:
-  # Subtle movement between conversations. The cheapest large improvement in
-  # the project: a still figure reads as a prop, a slightly moving one reads as
-  # something waiting. If a visitor can consciously see it, it is too big.
-  enabled: true
-  breath_amplitude: 0.05   # peak jaw opening during a breath, 0-1
-  breath_period: 5.0       # seconds per breath; slow reads as calm or old
-  swallow_every: 25.0      # average seconds between swallows; 0 disables

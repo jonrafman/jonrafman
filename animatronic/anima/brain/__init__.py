@@ -7,8 +7,8 @@ Three implementations, one interface:
   ollama    a local model on the box. Offline, free, private, simpler.
   claude    the Claude API. Best conversation, needs network, costs pennies.
 
-Swap between them with one line of config. Build the puppet against `scripted`,
-decide the brain later.
+Swap between them with one line of config. Build against `scripted`, decide
+the brain later.
 """
 
 from __future__ import annotations
@@ -33,7 +33,7 @@ class FallbackBrain:
     """Wraps a primary brain and drops to a backup when it fails.
 
     The subtlety is *when* the failure lands. A brain streams, so it may raise
-    after the puppet has already said two sentences out loud. Substituting a
+    after the piece has already said two sentences out loud. Substituting a
     canned line at that point produces a non-sequitur, so we only fall back if
     nothing has been spoken yet; a mid-reply failure just ends the reply, which
     reads as the character trailing off.

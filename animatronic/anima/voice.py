@@ -2,12 +2,12 @@
 
 Four backends, worst to best:
 
-  silent      no audio at all, correct duration. Develop the jaw and the loop
-              on a machine with no sound card.
+  silent      near-silent but speech-shaped, so the light still moves.
+              Build the whole performance on a machine with no sound card.
   espeak      espeak-ng. Free, offline, instant, and frankly robotic. Do not
-              dismiss it on those grounds: for a figure that is supposed to be
-              a not-quite-person, a degraded voice is often the stronger
-              artistic choice than a smooth one.
+              dismiss it on those grounds: for an intelligence that is not
+              supposed to be a person, a degraded voice is often the
+              stronger artistic choice than a smooth one.
   piper       good neural speech, fully offline, fast enough for a Pi. The
               sensible default for an installation that must not depend on
               wifi.
@@ -60,9 +60,9 @@ class SilentVoice:
     """Near-silent audio with a realistic speech shape. For development.
 
     Not literally zeros. It emits very quiet noise modulated at roughly the
-    syllable rate, which means the jaw envelope still has something to chew on
-    -- so you can build, calibrate, and tune the whole mouth mechanism before
-    you have a TTS engine working, or on a machine with no sound card at all.
+    syllable rate, which means the light envelope still has something to work
+    with -- so the whole performance can be built and tuned before a TTS
+    engine is running, or on a machine with no sound card at all.
     Timing is estimated from word count so the loop paces realistically.
     """
 
@@ -145,7 +145,7 @@ class PiperVoice:
         model_path: path to a ``.onnx`` voice. Download voices from the Piper
             releases; the matching ``.onnx.json`` must sit beside it.
         length_scale: >1.0 slows the delivery. Slower usually reads as older,
-            heavier, more deliberate -- often what a figure like this wants.
+            heavier, more deliberate -- often what a piece like this wants.
         noise_scale / noise_w: raise for a less even, more unstable voice.
     """
 
@@ -276,5 +276,5 @@ def build_voice(config):
             log.warning("Falling back to espeak.")
             return EspeakVoice()
         except Exception:
-            log.warning("Falling back to silence. The puppet will mime.")
+            log.warning("Falling back to silence. The light will still speak.")
             return SilentVoice()

@@ -10,9 +10,9 @@ Two backends:
 
 On microphones: this is the part people underestimate. A gallery is loud, and a
 cheap omnidirectional mic three feet from a visitor will transcribe the room,
-not the person. Get the microphone close -- inside the figure's chest, in a
-prop the visitor leans toward, or a handset they pick up -- and the whole
-project gets easier.
+not the person. Get the microphone close -- built into the sculpture's face,
+in something the visitor leans toward, or a handset they pick up -- and the
+whole project gets easier.
 """
 
 from __future__ import annotations

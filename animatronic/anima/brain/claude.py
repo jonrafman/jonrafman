@@ -2,15 +2,16 @@
 
 Needs network, costs pennies per visitor, and is a dramatically better
 conversationalist than anything that fits on a Raspberry Pi. Pair it with a
-scripted fallback so a dropped connection degrades into an evasive puppet
+scripted fallback so a dropped connection degrades into an evasive presence
 rather than a dead one.
 
 Model choice for this medium:
-  claude-sonnet-5  - the default here. Fast enough that the pause before the
-                     puppet speaks stays under the threshold where a visitor
-                     thinks it is broken. This matters more than eloquence.
-  claude-opus-5    - better, stranger character work; slower. Worth it if the
-                     writing carries the piece.
+  claude-opus-5    - the default. A naturalistic puppet must answer instantly
+                     or it reads as broken, but an unhurried intelligence is
+                     *supposed* to deliberate, and the thinking light makes the
+                     wait legible. That buys the budget for the better model.
+  claude-sonnet-5  - roughly half the cost and noticeably faster. Choose it if
+                     the piece wants a quicker, less considered voice.
 """
 
 from __future__ import annotations
@@ -39,7 +40,7 @@ class ClaudeBrain:
         max_tokens: replies are one to three sentences, so this is a backstop,
             not a target.
         refusal_reply: spoken when a safety classifier declines the request.
-            Visitors in a gallery will absolutely try to make the puppet say
+            Visitors in a gallery will absolutely try to make the piece say
             something vile; a deflection in character beats an error.
     """
 

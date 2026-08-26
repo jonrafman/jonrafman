@@ -161,28 +161,33 @@ class VoiceConfig:
 
 
 @dataclass
-class JawConfig:
-    enabled: bool = False
-    play_audio: bool = True
-    log_envelope: bool = True
-    servo_pin: int = 18
-    closed_angle: float = 0.0
-    open_angle: float = 35.0
-    max_opening: float = 1.0
-    use_pigpio: bool = True
+class LightConfig:
+    backend: str = "console"
+    draw: bool = True
+    gamma: float = 2.2
+    max_level: float = 1.0
+    pin: int = 18
+    pwm_frequency: int = 2000
+    addressable_pin: str = "D18"
+    led_count: int = 24
+    color: tuple[int, int, int] = (255, 255, 255)
 
     @classmethod
-    def load(cls, data: dict) -> "JawConfig":
-        s = _section(data, "jaw")
+    def load(cls, data: dict) -> "LightConfig":
+        s = _section(data, "light")
+        pwm = _section(s, "pwm")
+        addressable = _section(s, "addressable")
+        color = addressable.get("color", list(cls.color))
         return cls(
-            enabled=bool(s.get("enabled", cls.enabled)),
-            play_audio=bool(s.get("play_audio", cls.play_audio)),
-            log_envelope=bool(s.get("log_envelope", cls.log_envelope)),
-            servo_pin=int(s.get("servo_pin", cls.servo_pin)),
-            closed_angle=float(s.get("closed_angle", cls.closed_angle)),
-            open_angle=float(s.get("open_angle", cls.open_angle)),
-            max_opening=float(s.get("max_opening", cls.max_opening)),
-            use_pigpio=bool(s.get("use_pigpio", cls.use_pigpio)),
+            backend=s.get("backend", cls.backend),
+            draw=bool(s.get("draw", cls.draw)),
+            gamma=float(s.get("gamma", cls.gamma)),
+            max_level=float(s.get("max_level", cls.max_level)),
+            pin=int(pwm.get("pin", cls.pin)),
+            pwm_frequency=int(pwm.get("frequency", cls.pwm_frequency)),
+            addressable_pin=addressable.get("pin", cls.addressable_pin),
+            led_count=int(addressable.get("count", cls.led_count)),
+            color=tuple(int(c) for c in color)[:3],
         )
 
 
@@ -205,20 +210,34 @@ class TriggerConfig:
 
 
 @dataclass
-class IdleConfig:
+class PresenceConfig:
     enabled: bool = True
-    breath_amplitude: float = 0.05
-    breath_period: float = 5.0
-    swallow_every: float = 25.0
+    dormant_level: float = 0.08
+    dormant_swing: float = 0.05
+    dormant_period: float = 9.0
+    attending_level: float = 0.35
+    thinking_level: float = 0.5
+    thinking_swing: float = 0.22
+    thinking_rate: float = 1.6
+    speaking_baseline: float = 0.28
+    ease: float = 0.12
 
     @classmethod
-    def load(cls, data: dict) -> "IdleConfig":
-        s = _section(data, "idle")
+    def load(cls, data: dict) -> "PresenceConfig":
+        s = _section(data, "presence")
+        dormant = _section(s, "dormant")
+        thinking = _section(s, "thinking")
         return cls(
             enabled=bool(s.get("enabled", cls.enabled)),
-            breath_amplitude=float(s.get("breath_amplitude", cls.breath_amplitude)),
-            breath_period=float(s.get("breath_period", cls.breath_period)),
-            swallow_every=float(s.get("swallow_every", cls.swallow_every)),
+            dormant_level=float(dormant.get("level", cls.dormant_level)),
+            dormant_swing=float(dormant.get("swing", cls.dormant_swing)),
+            dormant_period=float(dormant.get("period", cls.dormant_period)),
+            attending_level=float(s.get("attending_level", cls.attending_level)),
+            thinking_level=float(thinking.get("level", cls.thinking_level)),
+            thinking_swing=float(thinking.get("swing", cls.thinking_swing)),
+            thinking_rate=float(thinking.get("rate", cls.thinking_rate)),
+            speaking_baseline=float(s.get("speaking_baseline", cls.speaking_baseline)),
+            ease=float(s.get("ease", cls.ease)),
         )
 
 
@@ -229,9 +248,9 @@ class Config:
     brain: BrainConfig
     ears: EarsConfig
     voice: VoiceConfig
-    jaw: JawConfig
+    light: LightConfig
     trigger: TriggerConfig
-    idle: IdleConfig
+    presence: PresenceConfig
     root: Path = field(default_factory=Path.cwd)
 
     def resolve(self, path: str) -> Path:
@@ -256,8 +275,8 @@ class Config:
             brain=BrainConfig.load(data),
             ears=EarsConfig.load(data),
             voice=VoiceConfig.load(data),
-            jaw=JawConfig.load(data),
+            light=LightConfig.load(data),
             trigger=TriggerConfig.load(data),
-            idle=IdleConfig.load(data),
+            presence=PresenceConfig.load(data),
             root=config_path.parent.resolve(),
         )

@@ -2,7 +2,7 @@
 
 This is the single most important latency trick in the whole project. A model
 streams tokens; text-to-speech wants whole phrases. If you wait for the full
-reply before speaking, the puppet stares blankly for several seconds and the
+reply before speaking, the piece sits dead for several seconds and the
 illusion dies. If you speak every token, the speech is choppy garbage.
 
 So: accumulate tokens, emit as soon as a sentence boundary lands, and force an
@@ -16,7 +16,7 @@ import re
 from typing import Iterable, Iterator
 
 # Abbreviations whose trailing period is not a sentence end. Deliberately short:
-# a puppet script is spoken language, not a legal brief.
+# this is spoken language, not a legal brief.
 _ABBREVIATIONS = {
     "mr", "mrs", "ms", "dr", "st", "prof", "sr", "jr", "vs", "etc", "e.g", "i.e",
 }

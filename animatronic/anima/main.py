@@ -1,14 +1,18 @@
 """The show loop.
 
-    idle ──▶ trigger ──▶ listen ──▶ think ──▶ speak (+ jaw) ──▶ listen ...
-      ▲                                                            │
-      └──────────────── visitor stops answering ◀──────────────────┘
+    dormant ──▶ trigger ──▶ attending ──▶ thinking ──▶ speaking ──▶ attending
+       ▲                                                                │
+       └──────────────── visitor stops answering ◀──────────────────────┘
+
+The state names are the light's, not the code's convenience: with no face and
+no motion, those four states are the entire visible vocabulary of the piece.
 
 Run it:
 
-    python -m anima.main --config config.yaml          # run the show
-    python -m anima.main --check                       # verify the setup
-    python -m anima.main --say "test one two"          # bench-test voice + jaw
+    python -m anima.main --config config.yaml     # run the piece
+    python -m anima.main --check                  # verify the setup
+    python -m anima.main --say "test one two"     # bench-test voice + light
+    python -m anima.main --states                 # cycle the light states
 """
 
 from __future__ import annotations
@@ -16,6 +20,7 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
+import time
 from itertools import islice
 from pathlib import Path
 
@@ -23,8 +28,8 @@ from .brain import build_brain
 from .brain.prompt import build_system_prompt, load_persona
 from .config import Config
 from .ears import build_ears
-from .idle import build_idle
-from .jaw import build_jaw
+from .light import build_light
+from .presence import ATTENDING, DORMANT, THINKING, build_presence
 from .text import limit_sentences
 from .trigger import build_trigger
 from .types import Conversation
@@ -36,7 +41,7 @@ DEFAULT_CONFIG = Path(__file__).resolve().parent.parent / "config.yaml"
 
 
 class Show:
-    """Owns the hardware, the brain, and the loop that runs the installation."""
+    """Owns the light, the voice, the brain, and the loop that runs the piece."""
 
     def __init__(self, config: Config) -> None:
         self.config = config
@@ -49,12 +54,12 @@ class Show:
         self.brain = build_brain(config.brain, system_prompt)
         self.ears = build_ears(config.ears)
         self.voice = build_voice(config.voice)
-        self.jaw = build_jaw(config.jaw)
+        self.light = build_light(config.light)
+        self.presence = build_presence(config.presence, self.light)
         self.trigger = build_trigger(config.trigger)
-        self.idle = build_idle(config.idle, self.jaw)
 
     def say(self, text: str) -> None:
-        """Speak one sentence and move the mouth with it."""
+        """Speak one sentence, rendering it as light."""
         text = text.strip()
         if not text:
             return
@@ -65,7 +70,7 @@ class Show:
             log.error("Synthesis failed for %r: %s", text, exc)
             return
         try:
-            self.jaw.perform(utterance)
+            self.presence.speak(utterance)
         except Exception as exc:
             log.error("Playback failed: %s", exc)
 
@@ -75,9 +80,11 @@ class Show:
         cfg = self.config
 
         if cfg.character.greeting:
+            self.presence.enter(THINKING)
             self.say(cfg.character.greeting)
 
         for _ in range(cfg.conversation.max_turns):
+            self.presence.enter(ATTENDING)
             heard = self.ears.listen(cfg.conversation.listen_timeout)
             if heard is None:
                 log.info("Visitor left.")
@@ -86,6 +93,10 @@ class Show:
             log.info("visitor: %s", heard)
             conversation.add("visitor", heard)
 
+            # Everything from here until the first sentence lands is dead air:
+            # model generation plus speech synthesis. The thinking state is
+            # what makes that time legible instead of broken.
+            self.presence.enter(THINKING)
             spoken = self._reply(conversation)
             if spoken:
                 conversation.add("character", " ".join(spoken))
@@ -120,22 +131,21 @@ class Show:
     def run(self) -> None:
         """Wait for visitors forever."""
         log.info(
-            "%s is awake. brain=%s voice=%s ears=%s trigger=%s jaw=%s",
+            "%s is awake. brain=%s voice=%s ears=%s trigger=%s light=%s",
             self.config.character.name,
             self.config.brain.backend,
             self.config.voice.backend,
             self.config.ears.backend,
             self.config.trigger.backend,
-            "servo" if self.config.jaw.enabled else "off",
+            self.config.light.backend,
         )
+        self.presence.start()
         while True:
-            self.idle.start()
+            self.presence.enter(DORMANT)
             try:
                 self.trigger.wait()
             except (KeyboardInterrupt, EOFError):
                 return
-            finally:
-                self.idle.stop()
 
             try:
                 self.converse()
@@ -145,16 +155,22 @@ class Show:
                 # One bad conversation must never close the exhibition.
                 log.exception("Conversation failed; resetting for the next visitor.")
 
+    def demo_states(self, seconds: float = 6.0) -> None:
+        """Cycle the ambient states so they can be tuned by eye."""
+        self.presence.start()
+        for state in (DORMANT, ATTENDING, THINKING):
+            log.info("state: %s", state)
+            self.presence.enter(state)
+            time.sleep(seconds)
+        log.info("state: speaking")
+        self.say("This is what speaking looks like, at length, so the shape is visible.")
+
     def close(self) -> None:
-        self.idle.stop()
-        for component in (self.jaw,):
-            closer = getattr(component, "close", None)
-            if callable(closer):
-                closer()
+        self.presence.close()
 
 
 def check(config: Config) -> int:
-    """Verify the setup without running the show. Returns an exit code."""
+    """Verify the setup without running the piece. Returns an exit code."""
     problems: list[str] = []
 
     try:
@@ -193,6 +209,7 @@ def check(config: Config) -> int:
     for name, builder, section in (
         ("ears", build_ears, config.ears),
         ("trigger", build_trigger, config.trigger),
+        ("light", build_light, config.light),
     ):
         try:
             built = builder(section)
@@ -200,13 +217,6 @@ def check(config: Config) -> int:
         except Exception as exc:
             problems.append(f"{name}: {exc}")
             print(f"  {name:9s} FAILED: {exc}")
-
-    try:
-        jaw = build_jaw(config.jaw)
-        print(f"  jaw       ok ({type(jaw).__name__})")
-    except Exception as exc:
-        problems.append(f"jaw: {exc}")
-        print(f"  jaw       FAILED: {exc}")
 
     if problems:
         print(f"\n{len(problems)} problem(s) found.")
@@ -217,11 +227,12 @@ def check(config: Config) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        prog="anima", description="Run a conversational animatronic figure."
+        prog="anima", description="Run a speaking sculpture."
     )
     parser.add_argument("--config", default=str(DEFAULT_CONFIG), help="path to config.yaml")
     parser.add_argument("--check", action="store_true", help="verify setup and exit")
     parser.add_argument("--say", metavar="TEXT", help="speak one line and exit")
+    parser.add_argument("--states", action="store_true", help="cycle light states and exit")
     parser.add_argument("--once", action="store_true", help="run one conversation and exit")
     parser.add_argument("-v", "--verbose", action="store_true", help="debug logging")
     args = parser.parse_args(argv)
@@ -246,7 +257,10 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if args.say:
             show.say(args.say)
+        elif args.states:
+            show.demo_states()
         elif args.once:
+            show.presence.start()
             show.converse()
         else:
             show.run()
@@ -254,7 +268,7 @@ def main(argv: list[str] | None = None) -> int:
         print()
     finally:
         show.close()
-        log.info("Figure at rest.")
+        log.info("Dark.")
     return 0
 
 
