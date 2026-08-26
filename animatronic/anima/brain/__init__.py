@@ -95,10 +95,23 @@ def build_brain(config, system_prompt: str) -> Brain:
             max_tokens=config.max_tokens,
             refusal_reply=(config.fallback_lines or ["Ask me something else."])[0],
         )
+    elif backend == "llamacpp":
+        from .llamacpp import LlamaCppBrain
+
+        primary = LlamaCppBrain(
+            model_path=config.llamacpp_model,
+            system_prompt=system_prompt,
+            grammar_path=config.llamacpp_grammar,
+            n_ctx=config.llamacpp_n_ctx,
+            n_gpu_layers=config.llamacpp_n_gpu_layers,
+            temperature=config.temperature,
+            repeat_penalty=config.repeat_penalty,
+            max_tokens=config.max_tokens,
+        )
     else:
         raise ValueError(
             f"Unknown brain backend '{config.backend}'. "
-            "Expected one of: scripted, ollama, claude."
+            "Expected one of: scripted, ollama, claude, llamacpp."
         )
 
     return FallbackBrain(primary, fallback)

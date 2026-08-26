@@ -22,6 +22,21 @@ character:
   # who are standing up in a room.
   max_reply_sentences: 3
 
+  # Append the Elements of Style composition rules to the system prompt:
+  # active voice, positive form, no qualifiers, concrete over abstract,
+  # emphatic word last. They suit this medium unusually well -- nearly every
+  # rule pushes toward the flat declarative register a speaking sculpture
+  # needs, and away from ornament that synthesized speech makes unbearable.
+  style_rules: true
+
+  # Names the closed vocabulary in the prompt, e.g. "the works of William
+  # Blake". This is a *nudge* -- real enforcement happens at the sampler via
+  # brain.llamacpp.grammar. Both are worth having: the prompt aims the model
+  # at the register the grammar will enforce, so the two pull together
+  # instead of the model fighting a wall it cannot see.
+  # Leave empty ("") to say nothing about it.
+  lexicon_source: "the works of William Blake"
+
 conversation:
   # How many past turns the character remembers within one visit. Higher costs
   # more per turn and makes it likelier to fixate on something said earlier.
@@ -43,6 +58,34 @@ brain:
 
   temperature: 0.85   # higher is stranger; 0.7-0.9 suits most characters
   max_tokens: 160     # backstop on reply length, not a target
+
+  # Matters more with a closed vocabulary than without one: a small lexicon
+  # makes repetition loops easy to fall into. Raise if it starts chanting.
+  repeat_penalty: 1.15
+
+  llamacpp:
+    # The backend this piece is built for. llama.cpp runs the model in-process,
+    # which is the only way to reach the sampler -- and the sampler is where a
+    # vocabulary constraint stops being a request and becomes a fact.
+    #
+    # Get a GGUF and point `model` at it. Qwen2.5-14B-Instruct Q4_K_M (~9GB)
+    # is a good starting point: strong instruction-following, which matters a
+    # great deal when the model is being forced through a grammar.
+    model: ""
+
+    # Built with:
+    #   python -m anima.lexicon build corpus/*.txt -o lexicon/blake.json
+    #   python -m anima.grammar lexicon/blake.json -o lexicon/blake.gbnf
+    #
+    # Leave empty to run UNCONSTRAINED. Worth doing once, deliberately, to
+    # hear what the model says before the lexicon is imposed -- the
+    # difference is the piece.
+    grammar: lexicon/blake.gbnf
+
+    n_ctx: 4096
+    # -1 offloads every layer to the GPU. On Apple Silicon that means Metal,
+    # and it is the difference between usable and unusable.
+    n_gpu_layers: -1
 
   ollama:
     host: http://127.0.0.1:11434

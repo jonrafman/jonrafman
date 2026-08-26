@@ -59,8 +59,14 @@ def extract_words(text: str) -> Counter[str]:
     Forms, not lemmas: if the corpus has "burning" but never "burn", then
     "burn" is not in the lexicon. That is the honest reading of "words found
     in the oeuvre", and it is what makes the constraint bite.
+
+    Typographic apostrophes are folded to ASCII. Editions differ in which they
+    use, and without folding, "thou'rt" and "thou’rt" become two entries --
+    doubling the grammar and letting a curly apostrophe through as though it
+    were a distinct word.
     """
-    return Counter(match.group(0).lower() for match in _WORD.finditer(text))
+    normalized = text.replace("’", "'").replace("‘", "'")
+    return Counter(match.group(0).lower() for match in _WORD.finditer(normalized))
 
 
 def build(

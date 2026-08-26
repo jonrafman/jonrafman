@@ -48,6 +48,8 @@ class CharacterConfig:
     persona_file: str = "persona/example.md"
     greeting: str = ""
     max_reply_sentences: int = 3
+    style_rules: bool = False
+    lexicon_source: str = ""
 
     @classmethod
     def load(cls, data: dict) -> "CharacterConfig":
@@ -57,6 +59,8 @@ class CharacterConfig:
             persona_file=s.get("persona_file", cls.persona_file),
             greeting=s.get("greeting", cls.greeting),
             max_reply_sentences=int(s.get("max_reply_sentences", cls.max_reply_sentences)),
+            style_rules=bool(s.get("style_rules", cls.style_rules)),
+            lexicon_source=s.get("lexicon_source", cls.lexicon_source),
         )
 
 
@@ -81,9 +85,14 @@ class BrainConfig:
     backend: str = "scripted"
     temperature: float = 0.85
     max_tokens: int = 160
+    repeat_penalty: float = 1.15
     ollama_host: str = "http://127.0.0.1:11434"
     ollama_model: str = "llama3.2:3b"
     claude_model: str = "claude-sonnet-5"
+    llamacpp_model: str = ""
+    llamacpp_grammar: str = ""
+    llamacpp_n_ctx: int = 4096
+    llamacpp_n_gpu_layers: int = -1
     scripted_lines: list[str] = field(default_factory=list)
     scripted_keyed: dict[str, str] = field(default_factory=dict)
     fallback_lines: list[str] = field(default_factory=list)
@@ -94,13 +103,21 @@ class BrainConfig:
         ollama = _section(s, "ollama")
         claude = _section(s, "claude")
         scripted = _section(s, "scripted")
+        llamacpp = _section(s, "llamacpp")
         return cls(
             backend=s.get("backend", cls.backend),
             temperature=float(s.get("temperature", cls.temperature)),
             max_tokens=int(s.get("max_tokens", cls.max_tokens)),
+            repeat_penalty=float(s.get("repeat_penalty", cls.repeat_penalty)),
             ollama_host=ollama.get("host", cls.ollama_host),
             ollama_model=ollama.get("model", cls.ollama_model),
             claude_model=claude.get("model", cls.claude_model),
+            llamacpp_model=llamacpp.get("model", cls.llamacpp_model),
+            llamacpp_grammar=llamacpp.get("grammar", cls.llamacpp_grammar),
+            llamacpp_n_ctx=int(llamacpp.get("n_ctx", cls.llamacpp_n_ctx)),
+            llamacpp_n_gpu_layers=int(
+                llamacpp.get("n_gpu_layers", cls.llamacpp_n_gpu_layers)
+            ),
             scripted_lines=list(scripted.get("lines", []) or []),
             scripted_keyed=dict(scripted.get("keyed", {}) or {}),
             fallback_lines=list(s.get("fallback_lines", []) or []),
@@ -269,7 +286,7 @@ class Config:
             raise ValueError(f"Config must be a YAML mapping: {config_path}")
         data = _expand_env(raw)
 
-        return cls(
+        config = cls(
             character=CharacterConfig.load(data),
             conversation=ConversationConfig.load(data),
             brain=BrainConfig.load(data),
@@ -280,3 +297,14 @@ class Config:
             presence=PresenceConfig.load(data),
             root=config_path.parent.resolve(),
         )
+
+        # Model and grammar paths are written relative to the config file, so
+        # the repo works the same wherever it is cloned. Resolve them here,
+        # where the config's own location is known, rather than making every
+        # consumer remember to.
+        for field_name in ("llamacpp_model", "llamacpp_grammar"):
+            value = getattr(config.brain, field_name)
+            if value:
+                setattr(config.brain, field_name, str(config.resolve(value)))
+
+        return config

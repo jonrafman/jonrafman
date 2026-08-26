@@ -13,3 +13,6 @@ models/
 
 # Secrets
 .env
+
+# GGUF model weights live outside git
+*.gguf

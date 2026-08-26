@@ -48,7 +48,10 @@ class Show:
 
         persona = load_persona(config.resolve(config.character.persona_file))
         system_prompt = build_system_prompt(
-            persona, max_sentences=config.character.max_reply_sentences
+            persona,
+            max_sentences=config.character.max_reply_sentences,
+            style=config.character.style_rules,
+            lexicon_source=config.character.lexicon_source,
         )
 
         self.brain = build_brain(config.brain, system_prompt)
