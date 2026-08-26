@@ -1,6 +1,6 @@
 """Text to audio -- where the character's voice actually lives.
 
-Four backends, worst to best:
+Backends, roughly worst to best:
 
   silent      near-silent but speech-shaped, so the light still moves.
               Build the whole performance on a machine with no sound card.
@@ -8,11 +8,25 @@ Four backends, worst to best:
               dismiss it on those grounds: for an intelligence that is not
               supposed to be a person, a degraded voice is often the
               stronger artistic choice than a smooth one.
-  piper       good neural speech, fully offline, fast enough for a Pi. The
-              sensible default for an installation that must not depend on
-              wifi.
-  elevenlabs  uncanny and cloneable. Needs network and costs money per
-              utterance. Use when the specific voice carries the piece.
+  piper       decent neural speech, offline, fast enough for a Pi. Superseded
+              for quality by the two below, but the lightest to deploy.
+  kokoro      82M parameters, Apache 2.0, near real-time on Apple Silicon.
+              Fifty-odd fixed voices, no cloning. The best quality-per-effort
+              option, and the cleanest licence.
+  chatterbox  MIT, clones a voice from a few seconds of reference audio, with
+              an emotion dial. The strongest offline option for this piece.
+  elevenlabs  the cloud benchmark. Needs network and costs per utterance --
+              which is exactly what this piece was built to avoid. Kept for
+              comparison, so you can hear what you are giving up.
+
+On licences, which matter more than they look: an artwork that is exhibited
+or sold is commercial use. XTTS-v2 and F5-TTS both sound excellent and both
+carry non-commercial licences, so neither belongs in a gallery piece however
+good the demo is. Kokoro (Apache 2.0) and Chatterbox (MIT) are unencumbered.
+
+On archaic spelling: everything here receives text already normalised by
+anima.pronounce. A speech model reads Blake's `thro` as "throw" and `shewd`
+as "shooed"; see that module for why the fix does not loosen the lexicon.
 """
 
 from __future__ import annotations
@@ -193,6 +207,117 @@ class PiperVoice:
             os.unlink(out)
 
 
+class KokoroVoice:
+    """Kokoro-82M. Apache 2.0, tiny, and far better than its size suggests.
+
+    82 million parameters, so it runs near real-time on Apple Silicon and
+    acceptably on CPU. Fifty-odd fixed voices; it cannot clone. For a piece
+    that wants *a* good voice rather than *one specific* voice, the fixed set
+    is not a limitation, and the licence is the cleanest of any option here.
+
+    Voice names are prefixed by accent and gender -- ``bm_`` for British male,
+    ``bf_`` British female, ``am_``/``af_`` American. A British voice suits a
+    lexicon drawn from Blake.
+
+    NOTE: this binding is written against Kokoro's documented API but has not
+    been executed -- no model weights could reach the machine it was written
+    on. Expect to adjust the call, not the architecture.
+    """
+
+    def __init__(
+        self,
+        voice: str = "bm_george",
+        *,
+        lang_code: str = "b",
+        speed: float = 0.9,
+        sample_rate: int = 24000,
+    ) -> None:
+        try:
+            from kokoro import KPipeline
+        except ImportError as exc:
+            raise RuntimeError(
+                "Kokoro is not installed. pip install kokoro soundfile\n"
+                "On macOS you may also need: brew install espeak-ng"
+            ) from exc
+
+        self._pipeline = KPipeline(lang_code=lang_code)
+        self.voice = voice
+        self.speed = speed
+        self.sample_rate = sample_rate
+
+    def synthesize(self, text: str) -> Utterance:
+        chunks = [
+            np.asarray(audio, dtype=np.float32)
+            for _, _, audio in self._pipeline(text, voice=self.voice, speed=self.speed)
+        ]
+        if not chunks:
+            raise RuntimeError(f"Kokoro produced no audio for {text!r}")
+        return Utterance(
+            samples=np.concatenate(chunks),
+            sample_rate=self.sample_rate,
+            text=text,
+        )
+
+
+class ChatterboxVoice:
+    """Chatterbox (Resemble AI). MIT licensed, clones from a few seconds of audio.
+
+    The strongest open option for this piece, and the licence is why: an
+    artwork that is exhibited or sold is commercial use, which rules out the
+    non-commercial licences on XTTS-v2 and F5-TTS however good they sound.
+    MIT does not care what you do with it.
+
+    ``exaggeration`` drives emotional intensity. For an unhurried, level
+    presence, keep it low -- the default 0.5 is already more animated than
+    this character should be.
+
+    Args:
+        reference_audio: a clean 5-20 second WAV of the voice to clone. The
+            recording quality sets the ceiling on the result; room tone and
+            compression in the reference come through in every line.
+        device: "mps" on Apple Silicon, "cuda" on NVIDIA, "cpu" otherwise.
+
+    NOTE: written against Chatterbox's documented API, not executed here.
+    """
+
+    def __init__(
+        self,
+        reference_audio: str = "",
+        *,
+        device: str = "mps",
+        exaggeration: float = 0.3,
+        cfg_weight: float = 0.5,
+        sample_rate: int = 24000,
+    ) -> None:
+        try:
+            from chatterbox.tts import ChatterboxTTS
+        except ImportError as exc:
+            raise RuntimeError(
+                "Chatterbox is not installed. pip install chatterbox-tts"
+            ) from exc
+
+        if reference_audio and not Path(reference_audio).is_file():
+            raise RuntimeError(f"Reference audio not found: {reference_audio}")
+
+        self._model = ChatterboxTTS.from_pretrained(device=device)
+        self.reference_audio = reference_audio
+        self.exaggeration = exaggeration
+        self.cfg_weight = cfg_weight
+        self.sample_rate = getattr(self._model, "sr", sample_rate)
+
+    def synthesize(self, text: str) -> Utterance:
+        kwargs = {"exaggeration": self.exaggeration, "cfg_weight": self.cfg_weight}
+        if self.reference_audio:
+            kwargs["audio_prompt_path"] = self.reference_audio
+
+        wav = self._model.generate(text, **kwargs)
+        samples = np.asarray(
+            wav.squeeze().detach().cpu().numpy() if hasattr(wav, "detach") else wav,
+            dtype=np.float32,
+        )
+        return Utterance(samples=samples, sample_rate=self.sample_rate, text=text)
+
+
 class ElevenLabsVoice:
     """Cloud TTS with voice cloning. Best quality, needs network, costs money."""
 
@@ -261,14 +386,26 @@ def build_voice(config):
                 model_path=config.piper_model,
                 length_scale=config.piper_length_scale,
             )
+        if backend == "kokoro":
+            return KokoroVoice(
+                voice=config.kokoro_voice,
+                lang_code=config.kokoro_lang,
+                speed=config.kokoro_speed,
+            )
+        if backend == "chatterbox":
+            return ChatterboxVoice(
+                reference_audio=config.chatterbox_reference,
+                device=config.chatterbox_device,
+                exaggeration=config.chatterbox_exaggeration,
+            )
         if backend == "elevenlabs":
             return ElevenLabsVoice(
                 voice_id=config.elevenlabs_voice_id,
                 api_key=config.elevenlabs_api_key or None,
             )
         raise ValueError(
-            f"Unknown voice backend '{config.backend}'. "
-            "Expected one of: silent, espeak, piper, elevenlabs."
+            f"Unknown voice backend '{config.backend}'. Expected one of: "
+            "silent, espeak, piper, kokoro, chatterbox, elevenlabs."
         )
     except Exception as exc:
         log.error("Voice backend '%s' failed to start: %s", backend, exc)

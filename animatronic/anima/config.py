@@ -156,6 +156,12 @@ class VoiceConfig:
     espeak_pitch: int = 50
     piper_model: str = ""
     piper_length_scale: float = 1.0
+    kokoro_voice: str = "bm_george"
+    kokoro_lang: str = "b"
+    kokoro_speed: float = 0.9
+    chatterbox_reference: str = ""
+    chatterbox_device: str = "mps"
+    chatterbox_exaggeration: float = 0.3
     elevenlabs_voice_id: str = ""
     elevenlabs_api_key: str = ""
 
@@ -172,6 +178,18 @@ class VoiceConfig:
             espeak_pitch=int(espeak.get("pitch", cls.espeak_pitch)),
             piper_model=piper.get("model", cls.piper_model),
             piper_length_scale=float(piper.get("length_scale", cls.piper_length_scale)),
+            kokoro_voice=_section(s, "kokoro").get("voice", cls.kokoro_voice),
+            kokoro_lang=_section(s, "kokoro").get("lang_code", cls.kokoro_lang),
+            kokoro_speed=float(_section(s, "kokoro").get("speed", cls.kokoro_speed)),
+            chatterbox_reference=_section(s, "chatterbox").get(
+                "reference_audio", cls.chatterbox_reference
+            ),
+            chatterbox_device=_section(s, "chatterbox").get(
+                "device", cls.chatterbox_device
+            ),
+            chatterbox_exaggeration=float(
+                _section(s, "chatterbox").get("exaggeration", cls.chatterbox_exaggeration)
+            ),
             elevenlabs_voice_id=eleven.get("voice_id", cls.elevenlabs_voice_id),
             elevenlabs_api_key=eleven.get("api_key", cls.elevenlabs_api_key),
         )

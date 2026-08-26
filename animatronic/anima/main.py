@@ -30,6 +30,7 @@ from .config import Config
 from .ears import build_ears
 from .light import build_light
 from .presence import ATTENDING, DORMANT, THINKING, build_presence
+from .pronounce import for_speech
 from .text import limit_sentences
 from .trigger import build_trigger
 from .types import Conversation
@@ -68,7 +69,10 @@ class Show:
             return
         log.info("%s: %s", self.config.character.name, text)
         try:
-            utterance = self.voice.synthesize(text)
+            # Log the character's spelling, speak a pronounceable one. The
+            # lexicon governs what may be said; this only governs how the voice
+            # engine is handed it.
+            utterance = self.voice.synthesize(for_speech(text))
         except Exception as exc:
             log.error("Synthesis failed for %r: %s", text, exc)
             return

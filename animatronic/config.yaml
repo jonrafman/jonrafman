@@ -155,14 +155,26 @@ ears:
   max_duration: 20.0         # hard cap on one recording
 
 voice:
-  # silent | espeak | piper | elevenlabs
-  #   silent      near-silent but speech-shaped, so the jaw still moves. Lets
-  #               you build and tune the mouth before TTS works.
-  #   espeak      offline, instant, unmistakably synthetic. Consider this on
-  #               purpose, not only as a fallback -- for a figure that is not
-  #               quite a person, a degraded voice can be the stronger choice.
-  #   piper       good neural speech, offline, fast enough for a Pi.
-  #   elevenlabs  uncanny and cloneable. Needs network, costs per utterance.
+  # silent | espeak | piper | kokoro | chatterbox | elevenlabs
+  #   silent      near-silent but speech-shaped, so the light still moves.
+  #               Build and tune the whole performance before TTS works.
+  #   espeak      offline, instant, unmistakably synthetic. Consider it on
+  #               purpose, not only as a fallback -- for something that is not
+  #               supposed to be a person, a degraded voice can be stronger.
+  #   piper       decent neural speech, lightest to deploy.
+  #   kokoro      82M params, Apache 2.0, near real-time on Apple Silicon.
+  #               Fixed voices, no cloning. Best quality-per-effort.
+  #   chatterbox  MIT, clones from a few seconds of reference audio, emotion
+  #               dial. The strongest offline option here.
+  #   elevenlabs  the cloud benchmark. Needs network -- which is what this
+  #               piece was built to avoid. Kept so you can hear the gap.
+  #
+  # On licences: an artwork exhibited or sold is commercial use. XTTS-v2 and
+  # F5-TTS sound excellent and are both non-commercial, so neither belongs in
+  # a gallery piece. Kokoro (Apache 2.0) and Chatterbox (MIT) are clean.
+  #
+  # Whatever you pick receives text already normalised by anima.pronounce --
+  # otherwise Blake's `thro` is read as "throw" and `shewd` as "shooed".
   backend: silent
 
   espeak:
@@ -175,6 +187,23 @@ voice:
     # must sit beside it.
     model: ""
     length_scale: 1.0   # >1.0 slows delivery
+
+  kokoro:
+    # Prefix is accent + gender: bm_/bf_ British, am_/af_ American. A British
+    # voice suits a lexicon drawn from Blake.
+    voice: bm_george
+    lang_code: b        # 'b' British English, 'a' American
+    speed: 0.9          # below 1.0 slows delivery; this piece is unhurried
+
+  chatterbox:
+    # A clean 5-20 second WAV of the voice to clone. Recording quality sets
+    # the ceiling -- room tone and compression in the reference come through
+    # on every line the sculpture ever speaks.
+    reference_audio: ""
+    device: mps         # mps on Apple Silicon, cuda on NVIDIA, else cpu
+    # Emotional intensity. The default 0.5 is livelier than this character
+    # should ever be; a level, unhurried presence wants it low.
+    exaggeration: 0.3
 
   elevenlabs:
     voice_id: ""
