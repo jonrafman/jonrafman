@@ -78,6 +78,32 @@ CONTRACTIONS = {
     "twas": "it was",
 }
 
+# Early modern GRAMMAR, as distinct from early modern spelling.
+#
+# The maps above change how a word is written. This one changes which word it
+# is, so applying it is a real decision about the piece rather than a
+# housekeeping fix. Kept separate for exactly that reason.
+#
+# What is lost: "thou" is the intimate second person, and English no longer
+# has one. Collapsing thou/thee/ye into "you" removes a distinction the
+# language cannot otherwise make. What is gained: the sculpture stops sounding
+# like a costume drama, and a visitor hears an intelligence rather than a
+# pastiche. Only one of those is recoverable later, so choose deliberately.
+ARCHAIC_GRAMMAR = {
+    "thou": "you", "thee": "you", "ye": "you",
+    "thy": "your", "thine": "yours",
+    "art": "are", "wast": "were",
+    "doth": "does", "dost": "do", "didst": "did",
+    "hath": "has", "hast": "have",
+    "shalt": "shall", "wilt": "will",
+    "canst": "can", "can'st": "can",
+    "knowest": "know", "know'st": "know",
+    "seest": "see", "sittest": "sit", "fearest": "fear",
+    "countest": "count", "complainest": "complain",
+    "walketh": "walks", "seeketh": "seeks",
+    "accepteth": "accepts", "answereth": "answers", "ariseth": "arises",
+}
+
 # Pronoun contractions that the generic "'d -> ed" rule would ruin.
 _KEEP = {"he'd", "she'd", "we'd", "i'd", "you'd", "they'd", "it'd", "who'd", "that'd"}
 

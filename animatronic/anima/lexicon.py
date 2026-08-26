@@ -41,6 +41,14 @@ _WORD = re.compile(r"[A-Za-z]+(?:['’-][A-Za-z]+)*")
 _PG_START = re.compile(r"\*\*\*\s*START OF (?:THE|THIS) PROJECT GUTENBERG.*?\*\*\*", re.I)
 _PG_END = re.compile(r"\*\*\*\s*END OF (?:THE|THIS) PROJECT GUTENBERG.*?\*\*\*", re.I)
 
+# Period-spelling mappings, shared with the speech path so the two can never
+# drift apart. See anima.pronounce.
+from .pronounce import (  # noqa: E402
+    ARCHAIC_GRAMMAR as _GRAMMAR,
+    SUBSTITUTIONS as _MODERN,
+    _KEEP as _KEEP_CONTRACTIONS,
+)
+
 
 def strip_boilerplate(text: str) -> str:
     """Remove a Project Gutenberg header and footer if present."""
@@ -53,7 +61,9 @@ def strip_boilerplate(text: str) -> str:
     return text
 
 
-def extract_words(text: str) -> Counter[str]:
+def extract_words(
+    text: str, *, modernise: bool = False, modern_grammar: bool = False
+) -> Counter[str]:
     """Count word forms in a text, lowercased.
 
     Forms, not lemmas: if the corpus has "burning" but never "burn", then
@@ -64,9 +74,34 @@ def extract_words(text: str) -> Counter[str]:
     use, and without folding, "thou'rt" and "thou’rt" become two entries --
     doubling the grammar and letting a curly apostrophe through as though it
     were a distinct word.
+
+    Args:
+        modernise: rewrite period spellings to their modern equivalents --
+            ``vanish'd`` to ``vanished``, ``thro`` to ``through``, ``answerd``
+            to ``answered``. This is a spelling change, not a vocabulary one:
+            they are the same words, and the constraint is unaffected. It is
+            strictly better than leaving the archaic forms in and repairing
+            them on the way to the speaker, because then the written and the
+            spoken form of a line finally agree.
     """
     normalized = text.replace("’", "'").replace("‘", "'")
-    return Counter(match.group(0).lower() for match in _WORD.finditer(normalized))
+    counts: Counter[str] = Counter()
+
+    for match in _WORD.finditer(normalized):
+        word = match.group(0).lower()
+        if modernise:
+            replacement = _MODERN.get(word)
+            if replacement is not None:
+                # A mapping may expand to several words ("tis" -> "it is").
+                counts.update(replacement.split())
+                continue
+            if word.endswith("'d") and len(word) > 3 and word not in _KEEP_CONTRACTIONS:
+                word = word[:-2] + "ed"
+        if modern_grammar:
+            word = _GRAMMAR.get(word, word)
+        counts[word] += 1
+
+    return counts
 
 
 def build(
@@ -74,6 +109,8 @@ def build(
     *,
     min_count: int = 1,
     strip_pg: bool = True,
+    modernise: bool = False,
+    modern_grammar: bool = False,
 ) -> dict:
     """Compile a lexicon from one or more corpus files.
 
@@ -92,7 +129,9 @@ def build(
         text = path.read_text(encoding="utf-8", errors="replace")
         if strip_pg:
             text = strip_boilerplate(text)
-        found = extract_words(text)
+        found = extract_words(
+            text, modernise=modernise, modern_grammar=modern_grammar
+        )
         counts.update(found)
         sources.append(
             {"path": str(path), "words": sum(found.values()), "distinct": len(found)}
@@ -108,6 +147,8 @@ def build(
         "total_words": sum(counts.values()),
         "distinct_words": len(counts),
         "min_count": min_count,
+        "modernised": modernise,
+        "modern_grammar": modern_grammar,
     }
 
 
@@ -139,7 +180,13 @@ def _cmd_build(args) -> int:
             print(f"Not a file: {p}", file=sys.stderr)
         return 2
 
-    data = build(paths, min_count=args.min_count, strip_pg=not args.keep_boilerplate)
+    data = build(
+        paths,
+        min_count=args.min_count,
+        strip_pg=not args.keep_boilerplate,
+        modernise=args.modernise or args.modern_grammar,
+        modern_grammar=args.modern_grammar,
+    )
     out = Path(args.output)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(data, indent=1, ensure_ascii=False), encoding="utf-8")
@@ -193,6 +240,15 @@ def main(argv: list[str] | None = None) -> int:
     build_cmd.add_argument(
         "--keep-boilerplate", action="store_true",
         help="do not strip Project Gutenberg headers and footers",
+    )
+    build_cmd.add_argument(
+        "--modernise", "--modernize", action="store_true",
+        help="rewrite period spellings (vanish'd -> vanished, thro -> through)",
+    )
+    build_cmd.add_argument(
+        "--modern-grammar", action="store_true",
+        help="also rewrite early modern grammar (thou -> you, doth -> does); "
+             "implies --modernise",
     )
     build_cmd.set_defaults(func=_cmd_build)
 
