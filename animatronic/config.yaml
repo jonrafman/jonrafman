@@ -1,0 +1,162 @@
+# The figure's settings.
+#
+# Defaults here run with NO hardware, NO model, and NO network: typed input,
+# canned replies, near-silent audio. That is deliberate -- clone the repo and
+# `python -m anima.main` works immediately, then you turn on one real piece at
+# a time.
+#
+# ${ENV_VAR} anywhere in this file is substituted from the environment, so keys
+# never get committed.
+
+character:
+  name: "The Figure"
+  persona_file: persona/example.md
+
+  # Spoken when a visitor triggers the figure, before they say anything.
+  # Leave empty ("") to have it wait in silence until spoken to.
+  greeting: "You came in. Close the door, the cold gets in."
+
+  # Hard cap on reply length. This is the single most important dial in the
+  # file. Three is generous; two is usually better. Long answers lose people
+  # who are standing up in a room.
+  max_reply_sentences: 3
+
+conversation:
+  # How many past turns the character remembers within one visit. Higher costs
+  # more per turn and makes it likelier to fixate on something said earlier.
+  max_history_turns: 12
+
+  # Seconds of silence before we decide the visitor has walked away and reset
+  # to a blank memory for the next person.
+  listen_timeout: 12.0
+
+  # Backstop against one person talking to it all afternoon.
+  max_turns: 40
+
+brain:
+  # scripted | ollama | claude
+  #   scripted  no model at all -- canned lines. Start here.
+  #   ollama    local model on this box. Offline, free, private, simpler.
+  #   claude    Claude API. Best conversation, needs network, pennies/visitor.
+  backend: scripted
+
+  temperature: 0.85   # higher is stranger; 0.7-0.9 suits most characters
+  max_tokens: 160     # backstop on reply length, not a target
+
+  ollama:
+    host: http://127.0.0.1:11434
+    # Pi 5 (8GB): llama3.2:3b or qwen2.5:3b are the realistic ceiling.
+    # Jetson / mini-PC with a GPU: try llama3.1:8b or qwen2.5:7b.
+    model: llama3.2:3b
+
+  claude:
+    # claude-sonnet-5 is the default for a reason: in a live room, the pause
+    # before the figure speaks matters more than the eloquence of what it says.
+    # claude-opus-5 is better and stranger if the writing carries the piece.
+    model: claude-sonnet-5
+    # Auth comes from ANTHROPIC_API_KEY or an `ant auth login` profile.
+
+  scripted:
+    # Used when backend is `scripted`. Empty means use the built-in pool.
+    lines: []
+    # Exact-word triggers, checked before the line pool. Handy for the two or
+    # three questions every single visitor asks.
+    keyed:
+      name: "I had one. I have not needed it in a long time."
+      cold: "You get used to it. That is the worst part."
+
+  # Spoken when the real brain cannot be reached -- network down, server not
+  # running, API error. Keep these in character: a figure that deflects reads
+  # as a figure, a figure that errors reads as a broken computer.
+  fallback_lines:
+    - "The wind is loud today. Say that again."
+    - "I lost the thread. Start over."
+    - "Not now. Ask me later."
+
+ears:
+  # text | whisper
+  #   text     type at the console. Use this for most development -- it takes
+  #            microphone quality and transcription errors out of the loop
+  #            while you are still working out what the character says.
+  #   whisper  faster-whisper, running locally.
+  backend: text
+
+  whisper:
+    # tiny.en | base.en | small.en -- bigger is better and slower.
+    model: base.en
+    # Find this with: python -m anima.devices
+    device_index: null
+
+  # Tune these in the actual room. The defaults assume a quiet space.
+  silence_threshold: 0.015   # RMS below which a moment counts as silence
+  silence_duration: 1.2      # seconds of silence that end the visitor's turn
+  max_duration: 20.0         # hard cap on one recording
+
+voice:
+  # silent | espeak | piper | elevenlabs
+  #   silent      near-silent but speech-shaped, so the jaw still moves. Lets
+  #               you build and tune the mouth before TTS works.
+  #   espeak      offline, instant, unmistakably synthetic. Consider this on
+  #               purpose, not only as a fallback -- for a figure that is not
+  #               quite a person, a degraded voice can be the stronger choice.
+  #   piper       good neural speech, offline, fast enough for a Pi.
+  #   elevenlabs  uncanny and cloneable. Needs network, costs per utterance.
+  backend: silent
+
+  espeak:
+    voice: en      # try en-gb, en-us, or a +m1..+m7 / +f1..+f4 variant
+    speed: 150     # words per minute; lower reads as older and heavier
+    pitch: 50      # 0-99
+
+  piper:
+    # Download a .onnx voice from the Piper releases; the matching .onnx.json
+    # must sit beside it.
+    model: ""
+    length_scale: 1.0   # >1.0 slows delivery
+
+  elevenlabs:
+    voice_id: ""
+    api_key: "${ELEVENLABS_API_KEY}"
+
+jaw:
+  # Off by default so this runs on a laptop.
+  enabled: false
+
+  play_audio: true      # when the servo is off, still play sound
+  log_envelope: true    # draw the jaw envelope in the console as a sparkline
+
+  servo_pin: 18         # BCM numbering
+
+  # Find these with: python -m anima.calibrate --pin 18
+  # Do it with the linkage DISCONNECTED. A servo is stronger than a printed
+  # jaw and will happily destroy one.
+  closed_angle: 0.0
+  open_angle: 35.0
+  max_opening: 1.0      # extra ceiling in [0,1]; lower to limit travel
+
+  # Hardware-timed PWM. Strongly recommended -- software PWM jitters and makes
+  # the servo hum audibly through the whole figure.
+  #   sudo apt install pigpio && sudo systemctl enable --now pigpiod
+  use_pigpio: true
+
+trigger:
+  # keyboard | always | button | motion
+  #   keyboard  press enter. For development.
+  #   always    never waits. Only with a close mic in a quiet room.
+  #   button    a momentary switch: one leg to the pin, one to ground.
+  #   motion    a PIR sensor at the threshold.
+  backend: keyboard
+
+  pin: 17
+  settle_seconds: 0.8   # motion only: wait before starting, so the figure does
+                        # not talk to the back of someone walking past
+  cooldown: 5.0         # motion only: minimum gap between triggers
+
+idle:
+  # Subtle movement between conversations. The cheapest large improvement in
+  # the project: a still figure reads as a prop, a slightly moving one reads as
+  # something waiting. If a visitor can consciously see it, it is too big.
+  enabled: true
+  breath_amplitude: 0.05   # peak jaw opening during a breath, 0-1
+  breath_period: 5.0       # seconds per breath; slow reads as calm or old
+  swallow_every: 25.0      # average seconds between swallows; 0 disables

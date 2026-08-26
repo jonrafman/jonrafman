@@ -1,0 +1,31 @@
+# Core -- always needed. Nothing here touches hardware or the network.
+pyyaml>=6.0
+numpy>=1.24
+
+# --- Brain -------------------------------------------------------------------
+# Local model via Ollama (install Ollama itself separately: https://ollama.com)
+requests>=2.31
+
+# Claude API. Only needed if brain.backend is `claude`.
+# anthropic>=0.40
+
+# --- Ears --------------------------------------------------------------------
+# Local speech-to-text. Only needed if ears.backend is `whisper`.
+# On a Pi also: sudo apt install libportaudio2
+# faster-whisper>=1.0
+# sounddevice>=0.4
+
+# --- Voice -------------------------------------------------------------------
+# Offline neural text-to-speech. Only needed if voice.backend is `piper`.
+# piper-tts>=1.2
+
+# For voice.backend `espeak`: sudo apt install espeak-ng  (no Python package)
+# For voice.backend `elevenlabs`: requests, already listed above.
+
+# --- Jaw / GPIO --------------------------------------------------------------
+# Raspberry Pi only. Everything degrades to audio-only without these.
+# gpiozero>=2.0
+# pigpio>=1.78
+
+# --- Dev ---------------------------------------------------------------------
+# pytest>=8.0

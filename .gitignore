@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Local model weights and voices -- large, and fetched per-machine
+*.onnx
+*.onnx.json
+*.gguf
+models/
+
+# Secrets
+.env
