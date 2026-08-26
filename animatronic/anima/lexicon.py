@@ -200,7 +200,16 @@ def main(argv: list[str] | None = None) -> int:
     check_cmd.set_defaults(func=_cmd_check)
 
     args = parser.parse_args(argv)
-    return args.func(args)
+    try:
+        return args.func(args)
+    except BrokenPipeError:
+        # Piping into `head` closes stdout early. Without this the traceback
+        # lands on top of otherwise-correct output, and Python raises a second
+        # error flushing stdout at exit -- so point the fd at devnull first.
+        import os
+
+        os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
+        return 0
 
 
 if __name__ == "__main__":
