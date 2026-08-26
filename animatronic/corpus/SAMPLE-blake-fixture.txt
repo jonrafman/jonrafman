@@ -1,0 +1,44 @@
+A TEST FIXTURE, NOT THE CORPUS.
+
+A few well-known Blake excerpts, here only so the lexicon pipeline can be
+tested end to end. A lexicon built from this file is far too small to run the
+piece — it would give the sculpture a vocabulary of a few hundred words.
+
+Replace this directory with Blake's complete works before building the real
+lexicon. Project Gutenberg has Songs of Innocence and of Experience, The
+Marriage of Heaven and Hell, the prophetic books, and the collected poems;
+download the plain-text editions into this directory and run:
+
+    python -m anima.lexicon build corpus/*.txt -o lexicon/blake.json
+
+---
+
+Tyger Tyger, burning bright,
+In the forests of the night;
+What immortal hand or eye,
+Could frame thy fearful symmetry?
+
+In what distant deeps or skies
+Burnt the fire of thine eyes?
+On what wings dare he aspire?
+What the hand, dare seize the fire?
+
+I wander thro' each charter'd street,
+Near where the charter'd Thames does flow.
+And mark in every face I meet
+Marks of weakness, marks of woe.
+
+To see a World in a Grain of Sand
+And a Heaven in a Wild Flower
+Hold Infinity in the palm of your hand
+And Eternity in an hour
+
+O Rose thou art sick.
+The invisible worm,
+That flies in the night
+In the howling storm
+
+Little Lamb who made thee
+Dost thou know who made thee
+Gave thee life and bid thee feed
+By the stream and o'er the mead
